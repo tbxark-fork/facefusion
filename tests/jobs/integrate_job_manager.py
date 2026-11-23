@@ -32,6 +32,15 @@ def before_all() -> None:
 		)
 	).wait()
 
+	ffmpeg.run_ffmpeg(
+		ffmpeg_builder.chain(
+			[ '-stream_loop', '11' ],
+			ffmpeg_builder.set_input(get_test_example_file('target-240p.mp4')),
+			ffmpeg_builder.set_video_duration(120),
+			ffmpeg_builder.force_output(get_test_example_file('target-240p-120s.mp4'))
+		)
+	).wait()
+
 
 @pytest.fixture(scope = 'function', autouse = True)
 def before_each() -> None:
@@ -64,6 +73,32 @@ def test_job_create() -> None:
 
 	commands = [ sys.executable, 'facefusion.py', 'job-create', 'test-job-create', '--jobs-path', get_test_jobs_directory() ]
 
+	assert subprocess.run(commands).returncode == 1
+
+
+def test_job_optimize() -> None:
+	commands = [ sys.executable, 'facefusion.py', 'job-optimize', 'test-job-optimize', '--jobs-path', get_test_jobs_directory() ]
+
+	assert subprocess.run(commands).returncode == 1
+
+	commands = [ sys.executable, 'facefusion.py', 'job-create', 'test-job-optimize', '--jobs-path', get_test_jobs_directory() ]
+	subprocess.run(commands)
+
+	commands = [ sys.executable, 'facefusion.py', 'job-add-step', 'test-job-optimize', '--jobs-path', get_test_jobs_directory(), '-s', get_test_example_file('source.jpg'), '-t', get_test_example_file('target-240p.mp4'), '-o', get_test_output_path('test-job-optimize.mp4') ]
+	subprocess.run(commands)
+
+	commands = [ sys.executable, 'facefusion.py', 'job-optimize', 'test-job-optimize', '--jobs-path', get_test_jobs_directory(), '--step-frame-total', '1000' ]
+
+	assert subprocess.run(commands).returncode == 1
+	assert count_step_total('test-job-optimize') == 1
+
+	commands = [ sys.executable, 'facefusion.py', 'job-add-step', 'test-job-optimize', '--jobs-path', get_test_jobs_directory(), '-s', get_test_example_file('source.jpg'), '-t', get_test_example_file('target-240p-120s.mp4'), '-o', get_test_output_path('test-job-optimize.mp4') ]
+	subprocess.run(commands)
+
+	commands = [ sys.executable, 'facefusion.py', 'job-optimize', 'test-job-optimize', '--jobs-path', get_test_jobs_directory(), '--step-frame-total', '1000' ]
+
+	assert subprocess.run(commands).returncode == 0
+	assert count_step_total('test-job-optimize') == 4
 	assert subprocess.run(commands).returncode == 1
 
 
