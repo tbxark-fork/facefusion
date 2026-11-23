@@ -68,19 +68,27 @@ def create_workflow_program() -> ArgumentParser:
 		scopes = [ 'api', 'cli' ],
 		groups = [ 'workflow' ]
 	)
+
+	return program
+
+
+def create_job_program() -> ArgumentParser:
+	program = ArgumentParser(add_help = False)
+	group_job = program.add_argument_group('job')
+
 	capability_store.register_capability_set(
 		[
-			group_workflow.add_argument(
+			group_job.add_argument(
 				'--step-frame-total',
 				help = translator.get('help.step_frame_total'),
 				type = int,
-				default = config.get_int_value('workflow', 'step_frame_total', '1000'),
+				default = config.get_int_value('job', 'step_frame_total', '1000'),
 				choices = facefusion.choices.step_frame_total_range,
 				metavar = create_int_metavar(facefusion.choices.step_frame_total_range)
 			)
 		],
 		scopes = [ 'api', 'cli' ],
-		groups = [ 'workflow' ]
+		groups = [ 'job' ]
 	)
 
 	return program
@@ -1156,6 +1164,7 @@ def collect_step_program() -> ArgumentParser:
 			create_frame_distribution_program(),
 			create_output_creation_program(),
 			create_workflow_program(),
+			create_job_program(),
 			create_processors_program()
 		],
 		add_help = False
