@@ -41,34 +41,45 @@ def optimize_job(job_id : JobId) -> bool:
 	job = read_job_file(job_id)
 
 	if job:
-		steps = split_job(job)
-		steps_total = len(steps)
+		steps = split_steps(job)
+		step_total = len(steps)
 
-		if steps_total > count_step_total(job_id):
+		if step_total > count_step_total(job_id):
 			job['steps'] = steps
 			return update_job_file(job_id, job)
+
 	return False
 
 
-def split_job(job : Job) -> List[Step]:
+def split_steps(job : Job) -> List[Step]:
 	steps : List[Step] = []
+	step_frame_total = state_manager.get_item('step_frame_total')
 
 	for step in job.get('steps'):
-		trim_frame_start, trim_frame_end = restrict_video_range(step.get('args').get('target_path'), step.get('args').get('trim_frame_start'), step.get('args').get('trim_frame_end'))
-		has_source_audio = has_audio(step.get('args').get('source_paths'))
-		has_video_output = get_file_format(step.get('args').get('output_path')) in facefusion.choices.video_formats
-		is_split_step = step.get('args').get('step_frame_total', 0) > 0 and has_video_output and not has_source_audio
+		source_paths = step.get('args').get('source_paths')
+		target_path = step.get('args').get('target_path')
+		output_path = step.get('args').get('output_path')
+		trim_frame_start = step.get('args').get('trim_frame_start')
+		trim_frame_end = step.get('args').get('trim_frame_end')
 
-		if is_split_step:
-			for step_frame_start in range(trim_frame_start, trim_frame_end, step.get('args').get('step_frame_total')):
+		#todo: excluding audio is more of a hack rather than solution
+		if get_file_format(output_path) in facefusion.choices.video_formats and not has_audio(source_paths):
+			trim_frame_start, trim_frame_end = restrict_video_range(target_path, trim_frame_start, trim_frame_end)
+
+			for step_frame_start in range(trim_frame_start, trim_frame_end, step_frame_total):
+				step_args = copy(step.get('args'))
+				step_args['trim_frame_start'] = step_frame_start
+				step_args['trim_frame_end'] = min(step_frame_start + step_frame_total, trim_frame_end)
+
 				steps.append(
 				{
-					'args': dict(step.get('args'), trim_frame_start = step_frame_start, trim_frame_end = min(step_frame_start + step.get('args').get('step_frame_total'), trim_frame_end)),
+					'args': step_args,
 					'status': step.get('status')
 				})
 
-		if not is_split_step:
+		else:
 			steps.append(step)
+
 	return steps
 
 

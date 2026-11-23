@@ -1164,7 +1164,6 @@ def collect_step_program() -> ArgumentParser:
 			create_frame_distribution_program(),
 			create_output_creation_program(),
 			create_workflow_program(),
-			create_job_program(),
 			create_processors_program()
 		],
 		add_help = False
@@ -1294,6 +1293,7 @@ def create_program() -> ArgumentParser:
 		[
 			create_job_id_program(),
 			create_jobs_path_program(),
+			create_job_program(),
 			create_log_level_program()
 		],
 		formatter_class = create_help_formatter_large

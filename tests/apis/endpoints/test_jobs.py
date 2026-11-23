@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from starlette.testclient import TestClient
 
-from facefusion import metadata, process_manager, session_context, session_manager, state_manager, store_creator
+from facefusion import ffmpeg, ffmpeg_builder, metadata, process_manager, session_context, session_manager, state_manager, store_creator
 from facefusion.apis import asset_store
 from facefusion.apis.core import create_api
 from facefusion.download import conditional_download
@@ -26,6 +26,15 @@ def before_all() -> None:
 		'https://github.com/facefusion/facefusion-assets/releases/download/examples-3.0.0/source.jpg',
 		'https://github.com/facefusion/facefusion-assets/releases/download/examples-3.0.0/target-240p.mp4'
 	])
+
+	ffmpeg.run_ffmpeg(
+		ffmpeg_builder.chain(
+			[ '-stream_loop', '11' ],
+			ffmpeg_builder.set_input(get_test_example_file('target-240p.mp4')),
+			ffmpeg_builder.set_video_duration(120),
+			ffmpeg_builder.force_output(get_test_example_file('target-240p-120s.mp4'))
+		)
+	).wait()
 
 
 @pytest.fixture(scope = 'function', autouse = True)
@@ -215,9 +224,9 @@ def test_optimize_job(test_client : TestClient) -> None:
 	add_step('job-test-optimize-job',
 	{
 		'target_path': get_test_example_file('target-240p.mp4'),
-		'output_path': get_test_output_path('test-optimize-job.mp4'),
-		'step_frame_total': 0
+		'output_path': get_test_output_path('test-optimize-job.mp4')
 	})
+	state_manager.set_item('step_frame_total', 1000)
 
 	optimize_job_response = test_client.patch('/jobs/job-test-optimize-job?action=optimize', headers =
 	{
@@ -231,9 +240,8 @@ def test_optimize_job(test_client : TestClient) -> None:
 
 	add_step('job-test-optimize-job',
 	{
-		'target_path': get_test_example_file('target-240p.mp4'),
-		'output_path': get_test_output_path('test-optimize-job.mp4'),
-		'step_frame_total': 100
+		'target_path': get_test_example_file('target-240p-120s.mp4'),
+		'output_path': get_test_output_path('test-optimize-job.mp4')
 	})
 
 	optimize_job_response = test_client.patch('/jobs/job-test-optimize-job?action=optimize', headers =
